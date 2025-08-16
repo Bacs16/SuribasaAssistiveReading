@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Results</h1>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <label>Search
+      <input id="filterBox" placeholder="Type to filter…" class="input-dark" style="margin-left:8px;min-width:220px">
+    </label>
+    <div class="muted">Tip: click a column header to sort</div>
+  </div>
+
+  <div class="table-wrapper">
+    <table id="resultsTable" class="table">
+      <thead>
+        <tr>
+          <th data-key="id" class="num">ID</th>
+
+          <!-- NEW learner identity columns -->
+          <th data-key="surname" class="cell-left">Surname</th>
+          <th data-key="first_name" class="cell-left">First Name</th>
+          <th data-key="middle_initial" class="cell-left">M.I.</th>
+          <th data-key="grade_level" class="num">Grade Level</th>
+
+          <th data-key="words" class="num">Words</th>
+          <th data-key="time_sec" class="num">Time (s)</th>
+          <th data-key="wpm" class="num">WPM</th>
+          <th data-key="accuracy" class="num">Accuracy (%)</th>
+
+          <th data-key="comp_pct" class="num">Comprehension (%)</th>
+          <th data-key="comp_level" class="cell-left">Comprehension Level</th>
+
+          <th data-key="mispronunciations" class="num">Mispronunciation</th>
+          <th data-key="omissions" class="num">Omissions</th>
+          <th data-key="substitutions" class="num">Substitution</th>
+          <th data-key="insertions" class="num">Insertions</th>
+          <th data-key="repetitions" class="num">Repetitions</th>
+          <th data-key="transpositions" class="num">Transposition</th>
+          <th data-key="reversals" class="num">Reversals</th>
+
+          <th data-key="word_score" class="num">Word Reading Score</th>
+          <th data-key="word_level" class="cell-left">Word Reading Level</th>
+          <th data-key="reading_profile" class="cell-left">Reading Profile</th>
+
+          <th>Export</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr data-id="{{ r.id }}">
+          <td class="num">{{ r.id }}</td>
+
+          <!-- NEW learner identity cells -->
+          <td class="cell-left">{{ r.surname or '—' }}</td>
+          <td class="cell-left">{{ r.first_name or '—' }}</td>
+          <td class="cell-left">{{ r.middle_initial or '—' }}</td>
+          <td class="num">{{ r.grade_level or '—' }}</td>
+
+          <td class="num">{{ r.words }}</td>
+          <td class="num">{{ "%.1f"|format(r.time_sec) }}</td>
+          <td class="num">{{ "%.1f"|format(r.wpm) }}</td>
+          <td class="num">{{ "%.1f"|format(r.accuracy) }}</td>
+
+          <td class="num"
+              title="{% if r.comp_total %}{{ r.comp_correct|default(0) }}/{{ r.comp_total }}{% endif %}">
+            {% if r.comp_pct is not none %}{{ '%.0f'|format(r.comp_pct) }}{% else %}—{% endif %}
+          </td>
+          <td class="cell-left">{{ r.comp_level }}</td>
+
+          <td class="num">{{ r.mispronunciations }}</td>
+          <td class="num">{{ r.omissions }}</td>
+          <td class="num">{{ r.substitutions }}</td>
+          <td class="num">{{ r.insertions }}</td>
+          <td class="num">{{ r.repetitions }}</td>
+          <td class="num">{{ r.transpositions }}</td>
+          <td class="num">{{ r.reversals }}</td>
+
+          <td class="num">{% if r.word_score is not none %}{{ '%.0f'|format(r.word_score) }}{% else %}—{% endif %}</td>
+          <td class="cell-left">{{ r.word_level }}</td>
+          <td class="cell-left">{{ r.reading_profile }}</td>
+
+          <td>
+            <a class="button xs btn-dark" href="{{ r.csv_url }}">CSV</a>
+            <a class="button xs btn-dark" href="{{ r.pdf_url }}">PDF</a>
+          </td>
+          <td>
+            <button class="button danger xs btn-dark-danger btn-del" data-url="{{ r.del_url }}">Delete</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="22" class="muted">No sessions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  :root{
+    --bg-0:#0b1220; --bg-1:#0f172a; --bg-2:rgba(148,163,184,.06);
+    --bg-3:rgba(59,130,246,.14); --txt:#e2e8f0; --muted:#94a3b8; --grid:#334155;
+  }
+  .muted{ color:var(--muted); }
+  .input-dark{ background:var(--bg-0); color:var(--txt); border:1px solid var(--grid); border-radius:8px; padding:.4rem .55rem; }
+  .table-wrapper{ overflow:auto; margin-top:10px; background:var(--bg-0); border:1px solid var(--grid); border-radius:12px; box-shadow:0 6px 18px rgba(2,6,23,.25); }
+  .table{ width:100%; border-collapse:separate; border-spacing:0; table-layout:auto; color:var(--txt); font-size:.95rem; }
+  .table th, .table td{ padding:.6rem .65rem; border-right:1px solid var(--grid); border-bottom:1px solid var(--grid); text-align:center; vertical-align:middle; white-space:nowrap; }
+  .table th:first-child, .table td:first-child { border-left:1px solid var(--grid); }
+  .table thead th { border-top:1px solid var(--grid); position:sticky; top:0; z-index:1; background:var(--bg-1); color:var(--txt); font-weight:700; }
+  .table tbody tr:nth-child(odd){ background:var(--bg-2); }
+  .table tbody tr:hover{ background:var(--bg-3); }
+  .cell-left{ text-align:left !important; }
+  .btn-dark{ background:#111827; color:var(--txt); border:1px solid var(--grid); border-radius:8px; padding:.25rem .5rem; }
+  .btn-dark:hover{ background:#1f2937; }
+  .btn-dark-danger{ background:#3b0b0b; border-color:#7f1d1d; }
+  .btn-dark-danger:hover{ background:#5b1111; }
+  .table th.sort-asc::after{ content:" ↑"; color:var(--muted); }
+  .table th.sort-desc::after{ content:" ↓"; color:var(--muted); }
+</style>
+
+<script>
+(function(){
+  const table = document.getElementById('resultsTable');
+  const filterBox = document.getElementById('filterBox');
+  const getCellText = (tr, idx) => (tr.children[idx]?.textContent || '').trim();
+
+  // Filter
+  function filterRows() {
+    const q = (filterBox.value || '').toLowerCase();
+    const rows = [...table.tBodies[0].rows];
+    rows.forEach(tr => {
+      const text = [...tr.cells].map(td => td.textContent.toLowerCase()).join(' ');
+      tr.style.display = text.indexOf(q) >= 0 ? '' : 'none';
+    });
+  }
+  filterBox.addEventListener('input', filterRows);
+
+  // Sort
+  let sortKey = null, sortDir = 1;
+  function sortBy(th) {
+    const key = th.dataset.key;
+    if (!key) return;
+
+    [...table.tHead.rows[0].cells].forEach(h => h.classList.remove('sort-asc','sort-desc'));
+    sortDir = (sortKey === key) ? -sortDir : 1;
+    th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+    sortKey = key;
+
+    const idx = [...table.tHead.rows[0].cells].indexOf(th);
+    const rows = [...table.tBodies[0].rows];
+
+    const numCols = new Set([
+      'id','words','time_sec','wpm','accuracy','comp_pct',
+      'mispronunciations','omissions','substitutions','insertions',
+      'repetitions','transpositions','reversals','word_score',
+      // NEW: treat grade as numeric when possible
+      'grade_level'
+    ]);
+
+    rows.sort((a, b) => {
+      let va = getCellText(a, idx);
+      let vb = getCellText(b, idx);
+      if (numCols.has(key)) { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; }
+      return (va > vb ? 1 : va < vb ? -1 : 0) * sortDir;
+    });
+
+    rows.forEach(r => table.tBodies[0].appendChild(r));
+  }
+  [...table.tHead.rows[0].cells].forEach(th => th.addEventListener('click', () => sortBy(th)));
+
+  // Delete
+  table.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-del');
+    if (!btn) return;
+    const url = btn.getAttribute('data-url');
+    if (!url) return;
+    if (!confirm('Delete this session? This cannot be undone.')) return;
+
+    btn.disabled = true;
+    try {
+      const res = await fetch(url, { method: 'POST', headers: {'X-Requested-With':'fetch'} });
+      const j = await res.json();
+      if (j && j.ok) {
+        const tr = btn.closest('tr');
+        tr?.parentNode?.removeChild(tr);
+      } else {
+        alert('Delete failed.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Delete failed.');
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

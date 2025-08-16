@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Account · Assistive Reading</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <style>
+    :root{
+      --bg1:#0f172a;   /* slate-900 */
+      --bg2:#0b1220;   /* deep navy */
+      --pri:#3b82f6;   /* blue-500 */
+      --sec:#06b6d4;   /* cyan-500 */
+      --ok:#22c55e;    /* green-500 */
+      --text:#e2e8f0;  /* slate-200 */
+      --muted:#9aa5b1; /* slate-400 */
+      --glass:#0b1220cc;
+      --ring:#60a5fa;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 10% 10%, #1e293b 0%, transparent 60%),
+        radial-gradient(1000px 700px at 90% 20%, #0ea5e9 0%, transparent 55%),
+        radial-gradient(1000px 700px at 50% 100%, #10b981 0%, transparent 55%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
+      font: 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+      overflow:auto;
+    }
+    .animated-bg{
+      position:fixed; inset:0; pointer-events:none; filter: blur(20px) saturate(120%);
+      background:
+        radial-gradient(1200px 800px at 20% -10%, rgba(59,130,246,.25), transparent 60%),
+        radial-gradient(900px 900px at 120% 30%, rgba(6,182,212,.25), transparent 60%),
+        radial-gradient(1000px 700px at 50% 120%, rgba(34,197,94,.2), transparent 60%);
+      animation: floatBG 18s ease-in-out infinite alternate;
+    }
+    @keyframes floatBG{0%{transform:translateY(-6px)}100%{transform:translateY(6px) translateX(-8px)}}
+
+    .topbar{
+      position:fixed; inset:0 0 auto 0; height:56px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 16px; backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(2,6,23,.6), rgba(2,6,23,.35));
+      border-bottom:1px solid rgba(148,163,184,.16);
+      z-index:5;
+    }
+    .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px}
+    .brand .dot{width:10px;height:10px;border-radius:50%; background:var(--ok); box-shadow:0 0 0 6px rgba(34,197,94,.18)}
+    .brand small{color:#cbd5e1; font-weight:600; opacity:.9}
+
+    .wrap{
+      min-height:100%;
+      display:grid; place-items:center;
+      padding: 96px 16px 32px; /* push below topbar */
+    }
+    .card{
+      width:min(1000px, 96vw);
+      background:var(--glass);
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:18px;
+      box-shadow:0 30px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+      backdrop-filter: blur(10px);
+      transform: translateY(8px) scale(.98);
+      opacity:0;
+      animation: enter .7s cubic-bezier(.2,.8,.2,1) .12s forwards;
+    }
+    @keyframes enter{to{transform:translateY(0) scale(1); opacity:1}}
+
+    header.card-head{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:18px 20px; border-bottom:1px solid rgba(148,163,184,.16);
+    }
+    .card-head h1{margin:0; font-size:1.15rem; letter-spacing:.2px}
+    .muted{color:var(--muted)}
+    .pill{
+      background:#0b2c3a; color:#8be9ff; padding:6px 10px; border-radius:999px; font-size:.82rem; border:1px solid rgba(148,163,184,.18)
+    }
+
+    .grid{
+      display:grid; gap:18px; padding:18px 20px 20px;
+      grid-template-columns: 1.2fr .8fr;
+    }
+    @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+
+    form{display:grid; gap:14px}
+    .row{display:grid; gap:12px; grid-template-columns:1fr 1fr}
+    @media (max-width:720px){ .row{grid-template-columns:1fr} }
+
+    label{display:grid; gap:8px; color:#cbd5e1; font-size:.95rem}
+    input[type="text"], input[type="number"], input[type="email"]{
+      width:100%; padding:12px 12px; border-radius:12px; border:1px solid rgba(148,163,184,.28);
+      background: rgba(2,6,23,.55); color:var(--text); outline:none;
+      transition: box-shadow .2s, border-color .2s, background .2s;
+    }
+    input:focus{ border-color:var(--ring); box-shadow:0 0 0 4px rgba(96,165,250,.25) }
+    input[type="file"]{
+      width:100%; padding:10px; border-radius:12px; border:1px dashed rgba(148,163,184,.35); background:rgba(2,6,23,.4); color:#cbd5e1
+    }
+
+    .aside{
+      display:grid; gap:14px;
+      align-content:start;
+    }
+    .avatar{
+      display:grid; place-items:center; gap:10px; padding:16px;
+      background: rgba(15,23,42,.6); border-radius:14px; border:1px solid rgba(148,163,184,.16);
+    }
+    .avatar img{
+      width:140px; height:140px; object-fit:cover; border-radius:16px;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      border:1px solid rgba(148,163,184,.22);
+      background:#111827;
+    }
+    .badge{
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid rgba(148,163,184,.18);
+      background: rgba(6,182,212,.12); color:#a5f3fc; font-weight:600; font-size:.85rem;
+    }
+    .badge .dot{width:8px;height:8px;border-radius:999px;background:#22d3ee; box-shadow:0 0 0 4px rgba(34,211,238,.15)}
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap:10px;
+      padding:11px 14px; border-radius:12px; border:1px solid transparent; color:#fff; font-weight:700;
+      background:linear-gradient(135deg, var(--pri), var(--sec) 55%, var(--ok));
+      box-shadow:0 10px 30px rgba(59,130,246,.35), 0 6px 16px rgba(6,182,212,.25);
+      cursor:pointer; transition: transform .08s, filter .2s, box-shadow .2s;
+    }
+    .btn:hover{ filter:brightness(1.05); box-shadow:0 12px 38px rgba(59,130,246,.45), 0 8px 20px rgba(6,182,212,.3) }
+    .btn:active{ transform: translateY(1px) scale(.997) }
+    .btn.secondary{
+      background:linear-gradient(135deg, #1f2937, #0b1220);
+      border:1px solid rgba(148,163,184,.25)
+    }
+
+    .foot{
+      display:flex; justify-content:space-between; align-items:center; gap:12px; padding:0 20px 18px;
+      border-top:1px solid rgba(148,163,184,.12);
+    }
+
+    /* Flash messages */
+    .flash{
+      margin: 12px 20px 0; padding: 10px 12px; border-radius: 10px;
+      border:1px solid rgba(248,113,113,.35); background: rgba(248,113,113,.12);
+      color:#fecaca; display:none;
+    }
+    .flash.ok{ border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); color:#bbf7d0; display:block; }
+
+    .legal{
+      position:fixed; left:16px; bottom:12px; color:#94a3b8; font-size:.85rem; z-index:2;
+    }
+  </style>
+</head>
+<body>
+  <div class="animated-bg"></div>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      Assistive Reading
+      <small class="muted">Account Setup</small>
+    </div>
+    <a href="{{ url_for('logout') if url_for else '#' }}" class="btn secondary" style="text-decoration:none">Logout</a>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <header class="card-head">
+        <h1>Profile details</h1>
+        <span class="pill">Secure · Private</span>
+      </header>
+
+      <!-- Flask flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="flash {{ 'ok' if category in ['success','info'] else '' }}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="grid">
+        <!-- Form -->
+        <form method="post" enctype="multipart/form-data" id="acctForm">
+          <div class="row">
+            <label>Teacher Name
+              <input type="text" name="teacher_name" value="{{ profile.teacher_name if profile else '' }}" placeholder="Full name">
+            </label>
+            <label>Grade (e.g., Grade 4)
+              <input type="text" name="grade" id="grade" value="{{ profile.grade if profile else '' }}" placeholder="Grade 4">
+            </label>
+          </div>
+
+          <div class="row">
+            <label>Section
+              <input type="text" name="section" value="{{ profile.section if profile else '' }}" placeholder="Section">
+            </label>
+            <label>Subject
+              <input type="text" name="subject" value="{{ profile.subject if profile else '' }}" placeholder="Reading / English">
+            </label>
+          </div>
+
+          <div class="row">
+            <label>School ID
+              <input type="text" name="school_id" value="{{ profile.school_id if profile else '' }}" placeholder="ID / code">
+            </label>
+            <label>School
+              <input type="text" name="school" value="{{ profile.school if profile else '' }}" placeholder="School name">
+            </label>
+          </div>
+
+          <div class="row">
+            <label>Screening Level
+              <input type="text" name="screening_level" value="{{ profile.screening_level if profile else '' }}" placeholder="Level 1">
+            </label>
+            <label>Total Enrolment
+              <input type="number" min="0" name="total_enrolment" value="{{ profile.total_enrolment if profile else 0 }}">
+            </label>
+          </div>
+
+          <div class="row">
+            <label>School Head
+              <input type="text" name="school_head" value="{{ profile.school_head if profile else '' }}" placeholder="Principal / Head">
+            </label>
+            <label>School Year
+              <input type="text" name="school_year" value="{{ profile.school_year if profile else '' }}" placeholder="2025-2026">
+            </label>
+          </div>
+
+          <label>Avatar (optional)
+            <input type="file" name="avatar" id="avatar" accept=".png,.jpg,.jpeg,.webp">
+          </label>
+        </form>
+
+        <!-- Aside: preview + grade category -->
+        <aside class="aside">
+          <div class="avatar">
+            <img id="avatarPreview" alt="Avatar preview" src="{{ url_for('static', filename='img/avatar-placeholder.png') if url_for else '' }}">
+            <div class="badge" id="gradeBadge"><span class="dot"></span><span>Category: <b id="gradeCat">Uncategorized</b></span></div>
+            <div class="muted" style="text-align:center">Upload a square image for best results.</div>
+          </div>
+
+          <div class="muted" style="line-height:1.6">
+            • The <b>Grade Category</b> updates as you type (e.g., “Grade 2”, “G7”).<br>
+            • Click <b>Save & Continue</b> to go to the dashboard.
+          </div>
+        </aside>
+      </div>
+
+      <div class="foot">
+        <a href="{{ url_for('dashboard') if url_for else '#' }}" class="btn secondary" style="text-decoration:none">Cancel</a>
+        <button form="acctForm" class="btn" type="submit">Save &amp; Go to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="legal">© {{ current_year or 2025 }} Assistive Reading</div>
+
+  <script>
+    // Avatar live preview
+    const fileIn = document.getElementById('avatar');
+    const img = document.getElementById('avatarPreview');
+    fileIn?.addEventListener('change', () => {
+      const f = fileIn.files?.[0];
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      img.src = url;
+      img.onload = () => URL.revokeObjectURL(url);
+    });
+
+    // Grade category (auto-detect)
+    const gradeInput = document.getElementById('grade');
+    const catEl = document.getElementById('gradeCat');
+    const badge = document.getElementById('gradeBadge');
+
+    function gradeBucket(s){
+      if (!s) return 'Uncategorized';
+      const t = String(s).toLowerCase().trim();
+      // pull number if present
+      const m = t.match(/(\d{1,2})/);
+      if (t.startsWith('k') || /kind(er|ergarten)/.test(t)) return 'Kindergarten';
+      const n = m ? parseInt(m[1], 10) : NaN;
+      if (Number.isNaN(n)) return 'Uncategorized';
+      if (n <= 3) return 'Early Elementary (G1–G3)';
+      if (n <= 6) return 'Upper Elementary (G4–G6)';
+      if (n <= 10) return 'Junior High (G7–G10)';
+      return 'Senior High (G11–G12)';
+    }
+    function updateBadge(){
+      const cat = gradeBucket(gradeInput?.value || '');
+      catEl.textContent = cat;
+      // vibe color tweak
+      const map = {
+        'Kindergarten':['#f59e0b','#fef3c7'],
+        'Early Elementary (G1–G3)':['#22d3ee','#ecfeff'],
+        'Upper Elementary (G4–G6)':['#34d399','#ecfdf5'],
+        'Junior High (G7–G10)':['#60a5fa','#eff6ff'],
+        'Senior High (G11–G12)':['#a78bfa','#f5f3ff'],
+        'Uncategorized':['#94a3b8','#1f2937']
+      };
+      const [dot,bg] = map[cat] || map['Uncategorized'];
+      badge.style.background = bg.includes('#1f') ? 'rgba(31,41,55,.55)' : bg;
+      badge.style.color = '#0b1220';
+      badge.querySelector('.dot').style.background = dot;
+    }
+    gradeInput?.addEventListener('input', updateBadge);
+    updateBadge();
+
+    // Tiny ripple on primary submit
+    const btn = document.querySelector('.btn[type="submit"]');
+    btn?.addEventListener('click', function(e){
+      const rect = this.getBoundingClientRect();
+      const s = Math.max(rect.width, rect.height);
+      const span = document.createElement('span');
+      Object.assign(span.style, {
+        position:'absolute', left:(e.clientX-rect.left-s/2)+'px', top:(e.clientY-rect.top-s/2)+'px',
+        width:s+'px', height:s+'px', borderRadius:'50%', background:'rgba(255,255,255,.25)',
+        pointerEvents:'none', transform:'scale(0)', transition:'transform .5s ease, opacity .6s ease'
+      });
+      this.appendChild(span);
+      requestAnimationFrame(()=>{ span.style.transform='scale(1.6)'; span.style.opacity='0'; });
+      setTimeout(()=> span.remove(), 600);
+    }, {passive:true});
+  </script>
+</body>
+</html>

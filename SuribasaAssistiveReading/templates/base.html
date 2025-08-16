@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SuriBasA</title>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+
+    <!-- Futuristic/robotic font for the logo -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+
+    <style>
+      :root{
+        --bg:#0b1320; --card:#111a2b; --text:#e5e7eb; --muted:#9aa3b2; --brand:#4F46E5; --border:#253142;
+        /* gradient brand colors for the animated text */
+        --brand-1:#3b82f6; /* blue */
+        --brand-2:#06b6d4; /* cyan */
+        --brand-3:#22c55e; /* green */
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif}
+
+      /* Layout */
+      .topbar{
+        position:sticky;top:0;z-index:50;
+        display:flex;align-items:center;justify-content:space-between;
+        gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--border);
+        background:rgba(11,19,32,.9);backdrop-filter:saturate(120%) blur(6px);
+      }
+      .brand{display:flex;align-items:center;gap:.5rem}
+      .brand a{font-weight:800;letter-spacing:.04em;text-decoration:none}
+
+      .container{max-width:1100px;margin:0 auto;padding:1rem}
+      .footer{border-top:1px solid var(--border);text-align:center;padding:1rem;color:var(--muted)}
+
+      /* Nav */
+      .nav{display:flex;gap:.75rem;align-items:center}
+      .nav a{color:var(--text);opacity:.9;text-decoration:none;padding:.45rem .7rem;border-radius:.5rem}
+      .nav a:hover{background:rgba(255,255,255,.06)}
+      .nav-toggle{
+        display:inline-flex;align-items:center;justify-content:center;
+        width:40px;height:40px;border-radius:.6rem;border:1px solid var(--border);
+        background:transparent;color:var(--text);cursor:pointer;
+      }
+
+      /* Mobile first: collapse nav */
+      @media (max-width: 768px){
+        .nav{display:none;position:absolute;left:0;right:0;top:56px;
+             flex-direction:column;align-items:stretch;gap:0;
+             background:var(--card);border-bottom:1px solid var(--border)}
+        .nav a{padding:.9rem 1rem;border-radius:0;border-top:1px solid rgba(255,255,255,.04)}
+        .nav.open{display:flex}
+      }
+      /* Desktop: show nav, hide toggle */
+      @media (min-width: 769px){
+        .nav-toggle{display:none}
+      }
+
+      /* Messages */
+      .flash-wrap{margin:1rem 0}
+      .flash{padding:.7rem .9rem;border-radius:.6rem;margin:.4rem 0;border:1px solid var(--border);background:var(--card)}
+      .flash.success{border-color:#1f6b3a;background:rgba(34,197,94,.1)}
+      .flash.error{border-color:#7a1d1d;background:rgba(239,68,68,.1)}
+
+      /* Utilities */
+      .muted{color:var(--muted)}
+
+      /* =========================
+         Roctic animated brand text
+         ========================= */
+      .roctic{
+        --stroke: rgba(148,163,184,.28);
+        --glow: rgba(34,197,94,.22);
+        font-family: "Orbitron", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Inter", Arial, sans-serif;
+        font-weight: 800;
+        letter-spacing: .04em;
+        display:inline-block;
+        position:relative;
+        margin:0;
+        /* animated gradient fill */
+        background: linear-gradient(90deg, var(--brand-1), var(--brand-2), var(--brand-3));
+        background-size: 200% 100%;
+        -webkit-background-clip: text;
+                background-clip: text;
+        color: transparent; /* lets the gradient show */
+        /* outline + glow for contrast on dark bg */
+        -webkit-text-stroke: 1px var(--stroke);
+        filter: drop-shadow(0 6px 24px var(--glow));
+        animation: roctic-slide 9s ease-in-out infinite alternate,
+                   roctic-pop .6s cubic-bezier(.2,.8,.2,1) both;
+        text-decoration:none; /* if it's a link */
+      }
+      /* header-sized variant */
+      .roctic--brand{
+        font-size: clamp(5px, 2.6vw, 25px);
+        letter-spacing: .06em;
+      }
+      /* glossy sweep highlight */
+      .roctic::after{
+        content:"";
+        position:absolute; inset:0;
+        background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%);
+        mix-blend-mode: screen;
+        transform: translateX(-120%) skewX(-18deg);
+        animation: roctic-shine 5.5s linear infinite 900ms;
+        pointer-events:none;
+      }
+      /* crisp outline clone behind text for readability */
+      .roctic::before{
+        content: attr(data-text);
+        position:absolute; inset:0;
+        color: transparent;
+        -webkit-text-stroke: 2px rgba(15,23,42,.9);
+        z-index:-1;
+      }
+      /* hover micro-interaction */
+      .roctic:hover{
+        letter-spacing:.075em;
+        filter: drop-shadow(0 12px 36px var(--glow));
+        transition: letter-spacing .18s ease, filter .18s ease;
+      }
+      /* focus ring for a11y */
+      .roctic:focus-visible{
+        outline: 2px solid var(--brand-2);
+        outline-offset: 3px;
+        border-radius: 6px;
+      }
+      /* Animations */
+      @keyframes roctic-slide{
+        0%   { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+      }
+      @keyframes roctic-shine{
+        0%   { transform: translateX(-120%) skewX(-18deg); opacity:.0; }
+        45%  { opacity:.9; }
+        100% { transform: translateX(120%)  skewX(-18deg); opacity:0; }
+      }
+      @keyframes roctic-pop{
+        0%   { transform: translateY(6px) scale(.985); opacity:0; }
+        100% { transform: translateY(0)   scale(1);    opacity:1; }
+      }
+      /* Respect users who prefer reduced motion */
+      @media (prefers-reduced-motion: reduce){
+        .roctic, .roctic::after { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <!-- Brand with roctic effect -->
+      <div class="brand">
+        <a class="roctic roctic--brand" data-text="SuriBasA" href="{{ url_for('dashboard') }}">SuriBasA</a>
+      </div>
+
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-controls="mainnav" aria-expanded="false">
+        <!-- hamburger icon -->
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+        </svg>
+      </button>
+
+      <nav id="mainnav" class="nav" role="navigation">
+        <a href="{{ url_for('passages') }}">Passages</a>
+        <a href="{{ url_for('results') }}">Results</a>
+      </nav>
+    </header>
+
+    <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-wrap">
+            {% for cat, msg in messages %}
+              <div class="flash {{ cat }}">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <div class="tagline">
+      AI-Powered, Phil-IRI–Aligned Tool for Automated Scoring of Oral Reading Fluency, Accuracy, and Comprehension
+      </div>
+      <div class="footer-tagline">© {{ 2025 }} Lanna National High School</div>
+    </footer>
+
+    <script>
+      // Small JS to toggle mobile nav
+      (function(){
+        const btn = document.querySelector('.nav-toggle');
+        const nav = document.getElementById('mainnav');
+        btn?.addEventListener('click', ()=>{
+          const open = nav.classList.toggle('open');
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      })();
+    </script>
+  </body>
+</html>

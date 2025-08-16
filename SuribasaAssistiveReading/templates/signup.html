@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create account — Assistive Reading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b1020;
+    --panel:#0f172a;
+    --panel-2:#0b1220;
+    --text:#e2e8f0;
+    --muted:#94a3b8;
+    --primary:#3b82f6;
+    --primary-2:#2563eb;
+    --ring: rgba(59,130,246,.45);
+    --ok:#22c55e;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #0b1535 0, transparent 60%),
+      radial-gradient(1000px 600px at 100% 0%, #0a1f3d 0, transparent 55%),
+      var(--bg);
+    overflow-y:auto;
+  }
+  .wrap{min-height:100%; display:grid; place-items:center; padding:36px 20px}
+  .card{
+    width:min(1100px,96vw);
+    background:linear-gradient(180deg,rgba(255,255,255,.04),transparent), var(--panel);
+    border:1px solid rgba(148,163,184,.18); border-radius:18px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.06);
+    display:grid; grid-template-columns: 1.2fr 1.8fr;
+  }
+  .left{
+    padding:26px; position:relative; background:
+      radial-gradient(400px 200px at 10% 0%, rgba(59,130,246,.25) 0, transparent 70%),
+      radial-gradient(400px 200px at 80% 20%, rgba(34,197,94,.18) 0, transparent 70%),
+      var(--panel);
+  }
+  .badge{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:#dbeafe}
+  .badge .dot{width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px rgba(34,197,94,.18)}
+  h1{margin:10px 0 6px;font-size:1.8rem}
+  .blurb{margin-top:12px;color:#d1d5db}
+  .footnote{margin-top:auto;background:linear-gradient(90deg,rgba(30,58,138,.35),rgba(2,6,23,.35));
+    border:1px solid rgba(30,64,175,.45); color:#dbeafe; padding:10px 12px; border-radius:12px; display:flex; align-items:center; gap:8px}
+  .footnote .lock{filter:drop-shadow(0 0 6px rgba(59,130,246,.4))}
+  .right{padding:26px;background:var(--panel-2)}
+  .grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+  .row{display:grid; gap:8px}
+  label span{font-size:.9rem;color:var(--muted)}
+  input,select{
+    width:100%; background:#0b1220; color:var(--text); border:1px solid rgba(148,163,184,.25);
+    padding:12px 12px; border-radius:12px; outline:none;
+    transition:border .15s, box-shadow .15s, transform .05s;
+  }
+  input:focus,select:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 4px var(--ring); transform:translateY(-1px);
+  }
+  .actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+  .btn{
+    appearance:none; border:none; padding:12px 16px; border-radius:12px; font-weight:600; cursor:pointer;
+    background:#111827; color:#e5e7eb; transition:transform .05s, box-shadow .15s, background .15s
+  }
+  .btn:hover{background:#1f2937}
+  .btn.primary{background:linear-gradient(180deg,var(--primary),var(--primary-2)); color:#fff; box-shadow:0 8px 22px rgba(37,99,235,.35)}
+  .btn.primary:hover{box-shadow:0 10px 28px rgba(37,99,235,.45)}
+  .hint{font-size:.88rem;color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:8px;background:#0b1530; border:1px solid rgba(148,163,184,.2); padding:6px 10px; border-radius:999px}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:#64748b}
+  .avatar{
+    display:flex;align-items:center;gap:16px;background:#0b1220;border:1px dashed rgba(148,163,184,.3);
+    border-radius:12px;padding:12px
+  }
+  .avatar img{width:76px;height:76px;border-radius:12px;object-fit:cover;border:1px solid rgba(148,163,184,.25)}
+  .divider{height:1px;background:rgba(148,163,184,.18);margin:14px 0}
+  .error{color:#fecaca}
+  .msg{padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#111827}
+  .msg.error{border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.08)}
+  .pw-wrap{position:relative}
+  .toggle-eye{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:transparent; border:none; color:#cbd5e1; cursor:pointer;
+  }
+  .meter{height:8px;background:#0b1325;border-radius:999px;overflow:hidden;border:1px solid rgba(148,163,184,.2)}
+  .meter > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e); transition:width .2s}
+  .subtle-link{color:#bfdbfe;text-decoration:none}
+  .subtle-link:hover{text-decoration:underline}
+  @media (max-width:1050px){ .card{grid-template-columns:1fr} .left{display:none} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <form class="card" method="post" enctype="multipart/form-data" id="signupForm" novalidate>
+    <!-- left -->
+    <div class="left">
+      <div class="badge"><span class="dot"></span> Assistive Reading</div>
+      <h1>Create your account</h1>
+      <p class="blurb">One step setup: account credentials and profile details in a single form. You’ll land on the dashboard right after.</p>
+      <div class="divider"></div>
+      <div class="pill" aria-live="polite"><span class="dot"></span> <strong>Category:</strong>&nbsp;<span id="gradeCatLabel">Uncategorized</span></div>
+      <p class="hint" style="margin-top:10px">Type your grade (e.g., <b>Grade 4</b>, <b>G4</b>, or <b>K</b>) — the category updates automatically.</p>
+
+      <div class="footnote" style="margin-top:24px">
+        <svg class="lock" width="18" height="18" viewBox="0 0 24 24" fill="#93c5fd"><path d="M12 1a5 5 0 00-5 5v3H6a3 3 0 00-3 3v7a3 3 0 003 3h12a3 3 0 003-3v-7a3 3 0 00-3-3h-1V6a5 5 0 00-5-5zm-3 8V6a3 3 0 116 0v3H9z"/></svg>
+        Your data is private & encrypted in transit
+      </div>
+    </div>
+
+    <!-- right -->
+    <div class="right">
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          <div class="row" style="margin-bottom:8px">
+            {% for cat,msg in msgs %}
+              <div class="msg {{ 'error' if cat in ['danger','error'] else '' }}">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="row">
+        <label><span>Email</span>
+          <input name="email" type="email" placeholder="you@school.edu" required autocomplete="email">
+        </label>
+      </div>
+
+      <div class="grid">
+        <label class="pw-wrap"><span>Password</span>
+          <input id="pw" name="password" type="password" minlength="6" required autocomplete="new-password">
+          <button class="toggle-eye" type="button" aria-label="Show password" data-target="pw">👁️</button>
+        </label>
+        <label class="pw-wrap"><span>Confirm password</span>
+          <input id="pw2" name="confirm" type="password" minlength="6" required autocomplete="new-password">
+          <button class="toggle-eye" type="button" aria-label="Show password" data-target="pw2">👁️</button>
+        </label>
+      </div>
+      <div class="row">
+        <div class="meter" aria-hidden="true"><i id="pwMeter"></i></div>
+        <div class="hint" id="pwHint">Use at least 6 characters with letters & numbers.</div>
+        <div class="hint error" id="matchHint" style="display:none">Passwords don’t match.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid">
+        <label><span>Teacher Name</span>
+          <input name="teacher_name" placeholder="Your name" autocomplete="name">
+        </label>
+        <label><span>Grade (e.g., Grade 4)</span>
+          <input id="gradeField" name="grade" placeholder="Grade 4" autocomplete="organization-title">
+        </label>
+        <label><span>Section</span>
+          <input name="section" placeholder="Section">
+        </label>
+        <label><span>Subject</span>
+          <input name="subject" placeholder="Subject">
+        </label>
+        <label><span>School ID</span>
+          <input name="school_id" placeholder="ID" autocomplete="off">
+        </label>
+        <label><span>School</span>
+          <input name="school" placeholder="School name" autocomplete="organization">
+        </label>
+        <label><span>Screening Level</span>
+          <input name="screening_level" placeholder="Level">
+        </label>
+        <label><span>Total Enrolment</span>
+          <input type="number" name="total_enrolment" value="0" min="0">
+        </label>
+        <label><span>School Head</span>
+          <input name="school_head" placeholder="Name of School Head">
+        </label>
+        <label><span>School Year</span>
+          <input name="school_year" placeholder="2025-2026">
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <label><span>Avatar (optional)</span>
+          <div class="avatar">
+            <img id="preview" src="https://dummyimage.com/76x76/0b1325/ffffff&text=+" alt="Avatar preview">
+            <input type="file" name="avatar" accept=".png,.jpg,.jpeg,.webp" style="flex:1">
+          </div>
+        </label>
+        <div class="hint">Upload a square image for best results.</div>
+      </div>
+
+      <div class="actions">
+        <a class="subtle-link" href="{{ url_for('login') }}">Already have an account? Sign in</a>
+        <div style="display:flex;gap:10px">
+          <a class="btn" href="{{ url_for('login') }}">Cancel</a>
+          <button class="btn primary" type="submit" id="submitBtn">
+            <span class="btn-text">Create account</span>
+            <span class="btn-spinner" style="display:none">⏳</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+  // live grade -> category label
+  const gradeField = document.getElementById('gradeField');
+  const label = document.getElementById('gradeCatLabel');
+  function catFromGrade(v){
+    v = String(v||'').toLowerCase();
+    const g = v.match(/\bgrade\s*([k0-9]+)|\bg([0-9]+)|\b(k)\b/);
+    if(!g) return 'Uncategorized';
+    const raw = (g[1]||g[2]||g[3]||'').toString().toUpperCase();
+    if(raw==='K') return 'Kinder';
+    const n = parseInt(raw,10);
+    if(!isFinite(n)) return 'Uncategorized';
+    if(n <= 3) return 'Lower Elementary';
+    if(n <= 6) return 'Upper Elementary';
+    if(n <= 8) return 'Middle';
+    return 'High School';
+  }
+  gradeField?.addEventListener('input', ()=> label.textContent = catFromGrade(gradeField.value));
+  label.textContent = catFromGrade(gradeField?.value);
+
+  // avatar preview
+  const preview = document.getElementById('preview');
+  document.querySelector('input[type=file][name=avatar]')?.addEventListener('change', (e)=>{
+    const f = e.target.files?.[0];
+    if(!f) return;
+    const url = URL.createObjectURL(f);
+    preview.src = url;
+  });
+
+  // password show/hide
+  document.querySelectorAll('.toggle-eye').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-target');
+      const input = document.getElementById(id);
+      const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+      input.setAttribute('type', type);
+      btn.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+  });
+
+  // simple strength meter + match check
+  const pw = document.getElementById('pw');
+  const pw2 = document.getElementById('pw2');
+  const meter = document.getElementById('pwMeter');
+  const hint = document.getElementById('pwHint');
+  const matchHint = document.getElementById('matchHint');
+
+  function score(str){
+    let s = 0;
+    if(!str) return 0;
+    if(str.length >= 6) s += 1;
+    if(/[A-Z]/.test(str)) s += 1;
+    if(/[0-9]/.test(str)) s += 1;
+    if(/[^A-Za-z0-9]/.test(str)) s += 1;
+    if(str.length >= 12) s += 1;
+    return Math.min(4, s);
+  }
+  function updateMeter(){
+    const sc = score(pw.value);
+    meter.style.width = (sc*25) + '%';
+    hint.textContent = sc < 2 ? 'Weak password' : sc < 3 ? 'Okay' : 'Strong';
+  }
+  function checkMatch(){
+    const ok = pw.value && pw2.value && pw.value === pw2.value;
+    matchHint.style.display = ok || !pw2.value ? 'none' : 'block';
+    return ok;
+  }
+  pw.addEventListener('input', ()=>{ updateMeter(); checkMatch(); });
+  pw2.addEventListener('input', checkMatch);
+  updateMeter();
+
+  // prevent double submit + client validation
+  const form = document.getElementById('signupForm');
+  const submitBtn = document.getElementById('submitBtn');
+  form.addEventListener('submit', (e)=>{
+    if (!form.reportValidity()) {
+      e.preventDefault();
+      return;
+    }
+    if (!checkMatch()) {
+      e.preventDefault();
+      pw2.focus();
+      return;
+    }
+    submitBtn.disabled = true;
+    form.querySelector('.btn-text').style.display='none';
+    form.querySelector('.btn-spinner').style.display='inline';
+  });
+</script>
+</body>
+</html>

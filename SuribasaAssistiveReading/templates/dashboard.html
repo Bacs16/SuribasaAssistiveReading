@@ -1,0 +1,402 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% set total_passages = passages|length %}
+{% set total_sessions = sessions|length %}
+{% set avg_wcpm = (sessions|sum(attribute='wcpm') / (total_sessions if total_sessions else 1)) %}
+{% set avg_acc  = (sessions|sum(attribute='accuracy') / (total_sessions if total_sessions else 1)) %}
+
+{# Display name + avatar helpers #}
+{% set display_name = (
+  current_user.profile.teacher_name
+  if current_user and current_user.profile and current_user.profile.teacher_name
+  else (current_user.email.split('@')[0] if current_user and current_user.email else 'there')
+) %}
+{% set avatar_rel = (
+  current_user.profile.avatar_path
+  if current_user and current_user.profile and current_user.profile.avatar_path
+  else None
+) %}
+{% set avatar_url = url_for('static', filename=avatar_rel) if avatar_rel else None %}
+{% set name_base = (current_user.profile.teacher_name
+  if current_user and current_user.profile and current_user.profile.teacher_name
+  else (current_user.email.split('@')[0] if current_user and current_user.email else 'User')) %}
+{% set parts = (name_base|replace('_',' ')|trim).split() %}
+{% set initials = ((parts[0][0] if parts|length>0 else 'U') ~ (parts[1][0] if parts|length>1 else ''))|upper %}
+
+<style>
+  .layout { display:grid; grid-template-columns:260px 1fr; gap:24px; align-items:start; }
+  .sidebar {
+    position:sticky; top:16px; background:#0f172a; color:#e2e8f0;
+    border-radius:16px; padding:18px 16px; box-shadow:0 6px 18px rgba(15,23,42,.3);
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .userbox{display:flex; align-items:center; gap:12px; padding:8px; border-radius:12px;
+    background:#0b1220; border:1px solid rgba(148,163,184,.18);}
+  .userbox .avatar{
+    position:relative; width:38px; height:38px; border-radius:10px; overflow:hidden; flex:0 0 38px;
+    display:grid; place-items:center; background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 60%); color:#fff;
+    font-weight:700; letter-spacing:.5px; border:1px solid rgba(148,163,184,.22);
+  }
+  .userbox .avatar img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .userbox .avatar .init{ position:absolute; inset:0; display:grid; place-items:center; font-weight:800; }
+  .userbox .avatar.has-img .init{ display:none; }
+  .userbox .meta{line-height:1.1}
+  .userbox .meta .name{font-weight:700}
+  .userbox .meta .sub{color:#94a3b8; font-size:.85rem}
+
+  /* ====== Dropdown groups ====== */
+  .side { display:grid; gap:10px; }
+  .group{ background:#0b1220; border:1px solid rgba(148,163,184,.18); border-radius:12px; overflow:hidden }
+  .group .toggle{
+    width:100%; background:transparent; border:0; color:#e2e8f0; padding:12px 14px;
+    display:flex; align-items:center; justify-content:space-between; cursor:pointer;
+  }
+  .group .toggle:hover{ background:#111827 }
+  .group .left{ display:flex; align-items:center; gap:10px; font-weight:600 }
+  .icon{ width:18px; height:18px; opacity:.9 }
+  .chev{ width:16px; height:16px; transition:transform .25s ease, opacity .2s; opacity:.85 }
+  .group.open .chev{ transform:rotate(90deg) }
+  .items{
+    display:grid; gap:6px; padding:0 10px 10px 10px;
+    max-height:0; overflow:hidden; transition:max-height .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .group.open .items{ max-height:420px; }
+
+  .item{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:10px;
+    color:#e2e8f0; text-decoration:none; background:#0f172a;
+    border:1px solid rgba(148,163,184,.14); transform:translateY(0);
+    transition:background .2s, transform .12s ease, border-color .2s;
+  }
+  .item:hover{ background:#111f2e; transform:translateY(-1px); border-color:rgba(148,163,184,.22) }
+
+  .link-alone{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 14px; border-radius:12px; color:#e2e8f0; text-decoration:none;
+    background:#0b1220; border:1px solid rgba(148,163,184,.18);
+  }
+  .link-alone:hover{ background:#101828 }
+
+  .side-footer{margin-top:auto; display:grid; gap:8px}
+  .side-footer a{display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px;
+    text-decoration:none; color:#e2e8f0; background:#0b1220; border:1px solid rgba(148,163,184,.18);}
+  .side-footer a:hover{background:#101828}
+
+  /* ====== Main content ====== */
+  .content{display:grid; gap:24px}
+  .hero{
+    background:linear-gradient(135deg,#3b82f6 0%,#06b6d4 60%,#22c55e 100%);
+    color:#fff; border-radius:18px; padding:22px; box-shadow:0 8px 24px rgba(0,0,0,.15);
+  }
+  .hero h1{margin:0 0 8px; font-size:1.5rem}
+  .hero .muted{color:rgba(255,255,255,.92)}
+  .stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px}
+  .stat{background:#0b1220; color:#e2e8f0; border-radius:14px; padding:16px}
+  .stat .k{font-size:1.4rem; font-weight:700}
+  .stat small{color:#94a3b8}
+  .cards{display:grid; grid-template-columns:1fr; gap:18px}
+  .card{border-radius:16px; box-shadow:0 8px 24px rgba(2,6,23,.08)}
+  .card header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #e5e7eb}
+  .card header h2{margin:0; font-size:1.05rem}
+  .card .body{padding:16px}
+  .comp-points{margin:0; padding-left:18px; color:#475569}
+
+  /* ====== Modals ====== */
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(2,6,23,.65); display:none; align-items:center; justify-content:center; z-index:60; }
+  .modal{
+    background:linear-gradient(180deg, rgba(17,24,39,.94), rgba(15,23,42,.96));
+    color:#e2e8f0; border-radius:16px; width:min(1000px, 92vw);
+    max-height:85vh; overflow:auto;
+    box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);
+    border:1px solid rgba(148,163,184,.18);
+  }
+  .modal header{
+    position:sticky; top:0; z-index:1; background:rgba(15,23,42,.98);
+    padding:14px 16px; border-bottom:1px solid rgba(148,163,184,.18);
+    display:flex; align-items:center; justify-content:space-between; color:#e5e7eb;
+  }
+  .modal .body{ padding:16px; color:#cbd5e1; }
+  .close-btn{ background:#0b1220; color:#e5e7eb; border:1px solid rgba(148,163,184,.25); border-radius:8px; padding:8px 10px; }
+  .table{ width:100%; border-collapse:collapse; color:#e2e8f0; background:transparent; }
+  .table th,.table td{ padding:10px 8px; border-bottom:1px solid rgba(148,163,184,.18); text-align:left; font-size:.95rem }
+  .table thead th{ color:#c7d2fe; background:rgba(59,130,246,.08); border-bottom:1px solid rgba(148,163,184,.22); }
+  .table tbody tr:hover{ background:rgba(148,163,184,.06); }
+  .pill{background:#0b1730; color:#93c5fd; padding:4px 8px; border-radius:999px; font-size:.8rem}
+  .table th.num, .table td.num { text-align:right; }
+
+  @keyframes pulse-dot {
+    0%,100% { box-shadow:0 0 0 0 rgba(34,197,94,.35); }
+    50%     { box-shadow:0 0 0 6px rgba(34,197,94,.08); }
+  }
+  .pulse{ animation:pulse-dot 2s infinite ease-in-out }
+
+  @media (max-width:1000px){
+    .layout{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+</style>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="userbox">
+      <div class="avatar{% if avatar_url %} has-img{% endif %}">
+        <span class="init">{{ initials }}</span>
+        {% if avatar_url %}
+          <img src="{{ avatar_url }}" alt="Avatar of {{ display_name }}"
+               onload="this.parentElement.classList.add('has-img')"
+               onerror="this.remove(); this.parentElement.classList.remove('has-img');">
+        {% endif %}
+      </div>
+      <div class="meta">
+        <div class="name">{{ display_name }}</div>
+        <div class="sub">Teacher</div>
+      </div>
+    </div>
+
+    <div class="side">
+      <!-- Dashboard -->
+      <a class="link-alone" href="{{ url_for('dashboard') }}">
+        <span style="display:flex;align-items:center;gap:10px;">
+          <!-- home icon -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M3 10.5 12 3l9 7.5v8a2 2 0 0 1-2 2h-4.5a1.5 1.5 0 0 1-1.5-1.5V15a1.5 1.5 0 0 0-3 0v4.5A1.5 1.5 0 0 1 9 21.5H4a2 2 0 0 1-2-2v-9z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Dashboard
+        </span>
+        <span class="pulse" style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></span>
+      </a>
+
+      <!-- Word Reading group -->
+      <div class="group" id="grp-reading">
+        <button class="toggle" type="button" aria-expanded="false">
+          <span class="left">
+            <!-- book-open icon -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M3 6.5A3.5 3.5 0 0 1 6.5 3H11v15H6.5A3.5 3.5 0 0 0 3 21.5V6.5zM21 6.5A3.5 3.5 0 0 0 17.5 3H13v15h4.5A3.5 3.5 0 0 1 21 21.5V6.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Word Reading
+          </span>
+          <!-- chevron -->
+          <svg class="chev" viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="items">
+          <a class="item" href="javascript:void(0)" id="openPassages">
+            <!-- list icon -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Passages 
+          </a>
+          <a class="item" href="javascript:void(0)" id="openSessions">
+            <!-- chart icon -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M4 20V6m0 14h16M8 16l3-3 3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Sessions 
+          </a>
+          <a class="item" href="javascript:void(0)" id="openManage">
+            <!-- wrench icon -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M21 21l-5.2-5.2M12.5 7.5A4.5 4.5 0 1 0 7.5 12a4.5 4.5 0 0 0 5-4.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Manage Passages
+          </a>
+        </div>
+      </div>
+
+      <!-- Reading Comprehension -->
+      <a class="link-alone" href="{{ url_for('comprehension') }}">
+        <span style="display:flex;align-items:center;gap:10px;">
+          <!-- brain icon -->
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M8.5 8A3.5 3.5 0 1 1 5 11.5v1A3.5 3.5 0 1 1 8.5 16h7A3.5 3.5 0 1 1 19 12.5v-1A3.5 3.5 0 1 1 15.5 8h-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          Reading Comprehension
+        </span>
+        <!-- arrow-up-right -->
+        <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M7 17l10-10M9 7h8v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+
+      <!-- Phil-IRI group -->
+      <div class="group" id="grp-philiri">
+        <button class="toggle" type="button" aria-expanded="false">
+          <span class="left">
+            <!-- clipboard icon -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M9 4h6l1 2h3v15H5V6h3l1-2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Phil-IRI
+          </span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="items">
+          <a class="item" href="http://127.0.0.1:5001/">
+  <!-- play-circle -->
+  <svg class="icon" viewBox="0 0 24 24" fill="none">
+    <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"/>
+    <path d="M10 8l6 4-6 4V8z" stroke="currentColor" stroke-width="1.2" fill="currentColor"/>
+  </svg>
+  Stage 1: GST
+</a>
+
+          <a class="item" href="{{ url_for('results') }}">
+            <!-- table icon -->
+            <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4zM9 5v14M15 5v14M4 10h16M4 15h16" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+           Stage 2: Graded Passage PT
+          </a>
+        </div>
+      </div>
+
+      <!-- Account / Logout -->
+      <div class="side-footer">
+        <a href="{{ url_for('account') }}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm8 9a8 8 0 1 0-16 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Account
+        </a>
+        <a href="{{ url_for('logout') }}">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M15 17l5-5-5-5M20 12H9M12 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Logout
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="content">
+    <div class="hero">
+      <h1>Welcome back, {{ display_name }} 👋</h1>
+      <div class="muted">Track fluency, catch miscues, and check understanding — all in one place.</div>
+    </div>
+
+    <section class="stats">
+      <div class="stat"><div class="k">{{ total_passages }}</div><small>Passages</small></div>
+      <div class="stat"><div class="k">{{ total_sessions }}</div><small>Sessions Recorded</small></div>
+      <div class="stat"><div class="k">{{ '%.1f'|format(avg_wcpm) }}</div><small>Avg. WCPM</small></div>
+      <div class="stat"><div class="k">{{ '%.1f'|format(avg_acc) }}%</div><small>Avg. Accuracy</small></div>
+    </section>
+
+    
+  </main>
+</div>
+
+<!-- Passages Modal -->
+<div id="modalPassages" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="passagesTitle">
+  <div class="modal">
+    <header>
+      <h3 id="passagesTitle">Passages</h3>
+      <button class="close-btn" data-close="modalPassages">Close ✕</button>
+    </header>
+    <div class="body">
+      {% if passages %}
+        <table class="table">
+          <thead><tr><th>Title</th><th>Grade</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for p in passages %}
+            <tr>
+              <td>{{ p.title }}</td>
+              <td><span class="pill">{{ p.grade_level }}</span></td>
+              <td class="row-actions">
+                <a class="button" href="{{ url_for('passage_view', pid=p.id) }}">Read ▶</a>
+                <a class="button" href="{{ url_for('passages') }}">Manage</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="muted">No passages yet. Create one in “Manage Passages”.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Sessions Modal -->
+<div id="modalSessions" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="sessionsTitle">
+  <div class="modal">
+    <header>
+      <h3 id="sessionsTitle">Recent Sessions</h3>
+      <button class="close-btn" data-close="modalSessions">Close ✕</button>
+    </header>
+    <div class="body">
+      {% if sessions %}
+        <table class="table">
+          <thead>
+            <tr>
+              <th class="num">ID</th>
+              <th>Student</th>
+              <th>Passage</th>
+              <th>Date</th>
+              <th>Seconds</th>
+              <th>WCPM</th>
+              <th>Accuracy</th>
+              <th>Export</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in sessions %}
+            <tr>
+              <td class="num">{{ s.id }}</td>
+              <td>{{ s.student_name or '—' }}</td>
+              <td>{{ (s.passage.title if s.passage else '—') }}</td>
+              <td>{{ s.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>{{ '%.1f'|format(s.duration_sec or 0) }}</td>
+              <td>{{ '%.1f'|format(s.wcpm or 0) }}</td>
+              <td>{{ '%.1f'|format(s.accuracy or 0) }}%</td>
+              <td>
+                <a href="{{ url_for('report_pdf', sid=s.id) }}">PDF</a> ·
+                <a href="{{ url_for('export_csv', sid=s.id) }}">CSV</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div style="margin-top:10px">
+          <a class="button" href="{{ url_for('results') }}">Open Full Results</a>
+        </div>
+      {% else %}
+        <div class="muted">No sessions yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Manage (Quick View) -->
+<div id="modalManage" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
+  <div class="modal">
+    <header>
+      <h3 id="manageTitle">Manage Passages</h3>
+      <button class="close-btn" data-close="modalManage">Close ✕</button>
+    </header>
+    <div class="body">
+      <p>Total passages: <strong>{{ total_passages }}</strong></p>
+      <p>Jump to full manager for create/edit tools.</p>
+      <a class="button" href="{{ url_for('passages') }}">Open Manager</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = (s, r=document) => r.querySelector(s);
+  const open = (id) => { const m = $('#'+id); if(m) m.style.display='flex'; }
+  const close = (id) => { const m = $('#'+id); if(m) m.style.display='none'; }
+
+  // Dropdown toggles with localStorage remember
+  document.querySelectorAll('.group').forEach(grp => {
+    const key = 'grp-open:' + grp.id;
+    const toggle = grp.querySelector('.toggle');
+    const startOpen = localStorage.getItem(key) === '1';
+    if (startOpen) grp.classList.add('open');
+    toggle?.addEventListener('click', () => {
+      grp.classList.toggle('open');
+      localStorage.setItem(key, grp.classList.contains('open') ? '1' : '0');
+      toggle.setAttribute('aria-expanded', grp.classList.contains('open'));
+    });
+  });
+
+  // Quick view buttons
+  $('#openPassages')?.addEventListener('click', ()=>open('modalPassages'));
+  $('#openSessions')?.addEventListener('click', ()=>open('modalSessions'));
+  $('#openManage')?.addEventListener('click', ()=>open('modalManage'));
+
+  // Close handlers
+  document.querySelectorAll('[data-close]').forEach(btn=>{
+    btn.addEventListener('click', ()=> close(btn.getAttribute('data-close')));
+  });
+  ['modalPassages','modalSessions','modalManage'].forEach(id=>{
+    const el = document.getElementById(id);
+    el?.addEventListener('click', (e)=>{ if(e.target === el) close(id); });
+  });
+  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){
+    close('modalPassages'); close('modalSessions'); close('modalManage');
+  }});
+</script>
+
+{% endblock %}

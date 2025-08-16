@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h1>Edit Passage</h1>
+
+  <form method="POST" class="card" style="max-width: 800px;">
+    <label>Title
+      <input name="title" value="{{ passage.title }}" required />
+    </label>
+
+    <label>Grade Level
+      <input name="grade_level" value="{{ passage.grade_level }}" />
+    </label>
+
+    <label>Text
+      <textarea name="text" rows="12" required>{{ passage.text }}</textarea>
+    </label>
+
+    <div class="row" style="gap:10px;">
+      <button class="button primary" type="submit">Save</button>
+      <a class="button" href="{{ url_for('passages') }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

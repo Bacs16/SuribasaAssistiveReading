@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h1>Read: {{ passage.title }}</h1>
+
+  <div class="controls" style="gap:10px;align-items:center;flex-wrap:wrap">
+    <button id="btnStart" class="button primary">Start</button>
+    <button id="btnPause" class="button" disabled>Pause</button>
+    <button id="btnStop" class="button danger" disabled>Stop</button>
+    <span id="recIndicator" class="dot"></span>
+    <span id="statusText">Idle</span>
+
+    <!-- Guide voice (example reading) -->
+    <button id="btnGuide" class="button">Guide ▶</button>
+
+    <!-- Plays only the mistaken words (ui.js disables this while listening) -->
+    <button id="btnWrong" class="button" title="Play only the words read incorrectly">Wrong Words ▶</button>
+  </div>
+
+  <!-- Sensitivity + Force server ASR (Vosk) -->
+  <div class="row" style="gap:16px;align-items:center;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:10px">
+      <span>Sensitivity</span>
+      <input id="sensitivity" type="range" min="0" max="100" value="40" />
+      <span id="sensLabel" class="muted">Balanced</span>
+    </label>
+
+    <label style="display:flex;align-items:center;gap:6px">
+      <input id="forceServer" type="checkbox" />
+      <span>Use server ASR (Vosk)</span>
+    </label>
+
+    <span id="asrBanner" class="muted" style="display:none">Using server ASR (Vosk)</span>
+  </div>
+
+  <div class="row">
+    <canvas id="vu" width="400" height="60" class="vu"></canvas>
+  </div>
+
+  <div class="passage" id="passage" data-lang="en-US">
+    {% for t in tokens %}
+      <span class="word" data-index="{{ loop.index0 }}">{{ t }}</span>
+    {% endfor %}
+  </div>
+
+  <!-- Real-time typewriter of insertions -->
+  <div class="insertions">
+    <b>Insertions:</b> <span id="insertionLine"></span>
+  </div>
+
+  <div class="summary" id="summary" hidden>
+    <h3>Summary</h3>
+    <div class="grid">
+      <div class="card"><div>WCPM</div><div id="wcpm">0</div></div>
+      <div class="card"><div>Accuracy %</div><div id="accuracy">0</div></div>
+      <div class="card clickable" id="errorsCard"><div>Errors</div><div id="errors">0</div></div>
+    </div>
+
+    <!-- Expanded miscue details -->
+    <div id="errorPanel" class="card error-panel" hidden>
+      <h4>Errors in this read</h4>
+      <div class="grid">
+        <div><b>Mispronunciation</b><ul id="mispronList" class="error-list"></ul></div>
+        <div><b>Omission</b><ul id="omissionList" class="error-list"></ul></div>
+        <div><b>Substitution</b><ul id="subList" class="error-list"></ul></div>
+        <div><b>Insertion</b><ul id="insList" class="error-list"></ul></div>
+        <div><b>Repetition</b><ul id="repList" class="error-list"></ul></div>
+        <div><b>Transposition</b><ul id="transList" class="error-list"></ul></div>
+        <div><b>Reversal</b><ul id="revList" class="error-list"></ul></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <label>Student Name <input id="studentName" placeholder="Optional" /></label>
+      <button id="saveSession" class="button">Save Session</button>
+    </div>
+    <div id="saveResult" class="muted"></div>
+  </div>
+
+  <!-- Caret for the typewriter line -->
+  <style>
+    .insertions .caret{
+      display:inline-block; width:1px; height:1em; background:#333; vertical-align:baseline;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+
+  <!-- libs -->
+  <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tts.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/record.js') }}"></script>
+  <!-- phonetics must load BEFORE alignment.js -->
+  <script src="{{ url_for('static', filename='js/phonetics.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/alignment.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/asr.js') }}"></script>
+
+  <!-- Safer JSON injection -->
+  <script id="app-data" type="application/json">
+    {{ {"passageId": passage.id, "tokens": tokens}|tojson|safe }}
+  </script>
+  <script> window.APP = JSON.parse(document.getElementById('app-data').textContent); </script>
+
+  <!-- app logic -->
+  <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+
+  <!-- Guide voice logic (SpeechSynthesis) -->
+  <script>
+  (function(){
+    const btnGuide = document.getElementById('btnGuide');
+    if(!btnGuide) return;
+
+    function tokensToText(tokens){
+      if(!Array.isArray(tokens)) return '';
+      let out = '', punct = /^[,.;:!?)\]\}]$/, open=/^[(\[\{]$/;
+      tokens.forEach((t,i)=>{
+        const s = String(t||'');
+        if(i===0) { out += s; return; }
+        if (punct.test(s)) out += s;
+        else if (open.test(s)) out += ' ' + s;
+        else out += ' ' + s;
+      });
+      return out.replace(/\s+([,.;:!?])/g,'$1');
+    }
+
+    const fullText = tokensToText(window.APP.tokens || []);
+    let speaking = false;
+    function stopGuide(){ try { speechSynthesis.cancel(); } catch(e){} speaking=false; btnGuide.textContent='Guide ▶'; }
+    function startGuide(){
+      stopGuide();
+      const u = new SpeechSynthesisUtterance(fullText);
+      u.lang  = document.getElementById('passage').dataset.lang || 'en-US';
+      u.rate  = 0.95; u.pitch=1.0; u.onend = stopGuide;
+      speaking = true; btnGuide.textContent='Stop Guide';
+      speechSynthesis.speak(u);
+    }
+    btnGuide.addEventListener('click', ()=> speaking ? stopGuide() : startGuide());
+    document.getElementById('btnStart')?.addEventListener('click', stopGuide);
+    window.addEventListener('beforeunload', stopGuide);
+  })();
+  </script>
+{% endblock %}

@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Reading Comprehension</h1>
+
+<div class="grid" style="grid-template-columns: 420px 1fr; gap: 18px; align-items: start;">
+  <!-- Left: Passage & Controls -->
+  <div class="card">
+    <div class="body" style="padding:16px;display:grid;gap:12px">
+      <div class="row" style="gap:8px;align-items:end;flex-wrap:wrap">
+        <label>Passage ID
+          <input id="pid" type="number" min="1" placeholder="e.g. 1" style="width:120px;margin-left:8px">
+        </label>
+        <button id="btnLoad" class="button">Load</button>
+        <small class="muted">or paste custom text below</small>
+      </div>
+
+      <!-- PASSAGE PANEL with Maximize controls -->
+      <div id="passagePanel" class="passage-panel">
+        <div class="panel-head">
+          <label class="panel-title">Passage Text</label>
+          <div class="panel-actions">
+            <button id="btnFontMinus" class="button" title="Smaller text">A−</button>
+            <button id="btnFontPlus"  class="button" title="Larger text">A+</button>
+            <button id="btnFS" class="button" title="Maximize / Fullscreen">Maximize</button>
+          </div>
+        </div>
+        <textarea id="passageText" rows="8" placeholder="Paste passage text here…" class="passage-text"></textarea>
+      </div>
+
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="btnGen" class="button primary">Generate 10 Questions</button>
+        <button id="btnClear" class="button">Clear</button>
+        <button id="btnAIHealth" class="button" title="Check Gemini API status">AI Status</button>
+        <span id="genStatus" class="muted"></span>
+      </div>
+
+      <hr>
+
+      <div class="row" style="gap:8px;align-items:end;flex-wrap:wrap">
+        <label>Associate with Session ID (optional)
+          <input id="sessionId" type="number" min="1" placeholder="e.g. 12" style="width:130px;margin-left:8px">
+        </label>
+        <small class="muted">If set, score will be linked to that reading session.</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Questions + Scoring -->
+  <div class="card">
+    <header style="padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:1.05rem">Questions</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <small class="muted" id="genMeta" style="display:none"></small>
+        <div id="scoreBadge" style="display:none">
+          <span class="pill"><span id="scoreNow">0</span>%</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="body" style="padding:0">
+      <div id="qWrap" style="padding:12px 16px">
+        <div class="muted">No questions yet. Load/paste a passage and click “Generate 10 Questions”.</div>
+      </div>
+
+      <div style="padding:12px 16px;border-top:1px solid #e5e7eb;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="btnSubmit" class="button primary" disabled>Submit Answers</button>
+        <button id="btnRegenerate" class="button" disabled>Regenerate</button>
+        <span id="submitStatus" class="muted"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .q-item{border-bottom:1px solid #eee;padding:12px 0}
+  .q-item:last-child{border-bottom:none}
+  .q-id{font-weight:600;color:#cbd5e1;margin-right:6px}
+  .q-type{font-size:.8rem;color:#93a3b3}
+  .q-prompt{margin:.3rem 0 .55rem}
+  .muted{color:#6b7280}
+  .pill{background:#eff6ff;color:#1e40af;padding:4px 8px;border-radius:999px;font-size:.8rem}
+  .choice{display:flex;gap:10px;align-items:flex-start;margin:.35rem 0}
+  .choice input{margin-top:.2rem}
+  .choice label{cursor:pointer}
+  .choice .letter{font-weight:700;min-width:1.2rem;display:inline-block}
+  .explain{font-size:.88rem;margin-top:.4rem;display:none}
+  .correct{color:#10b981}
+  .wrong{color:#ef4444}
+  .choice.correct label{color:#10b981}
+  .choice.wrong label{color:#ef4444}
+  .disabled{opacity:.7;pointer-events:none}
+
+  /* Passage panel + fullscreen */
+  .passage-panel{display:grid; gap:8px}
+  .passage-panel .panel-head{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .panel-title{font-weight:600}
+  .panel-actions{display:flex; gap:8px}
+  .passage-text{width:100%;min-height:180px;background:#0b1324;border:1px solid #1f2937;border-radius:12px;padding:12px;color:inherit;font:16px/1.5 system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;resize:vertical;}
+  .passage-panel.fs{position:fixed; inset:0; z-index:9999; background:rgba(2,6,23,.92); padding:20px 16px;}
+  .passage-panel.fs .panel-head{max-width:1100px; margin:0 auto 8px auto; background:#0b1324; border:1px solid #334155; border-radius:12px 12px 0 0; padding:10px 12px;}
+  .passage-panel.fs .passage-text{max-width:1100px; margin:0 auto; height:calc(100vh - 140px); border-radius:0 0 12px 12px; border:1px solid #334155; border-top:none; resize:none;}
+  .passage-panel.fs .panel-title::after{content:' — Press Esc to exit'; font-weight:400; color:#93a3b3; margin-left:6px; font-size:.85rem;}
+</style>
+
+<script>
+(function(){
+  const pidEl = document.getElementById('pid');
+  const passageText = document.getElementById('passageText');
+  const btnLoad = document.getElementById('btnLoad');
+  const btnGen = document.getElementById('btnGen');
+  const btnClear = document.getElementById('btnClear');
+  const btnSubmit = document.getElementById('btnSubmit');
+  const btnRegenerate = document.getElementById('btnRegenerate');
+  const btnAIHealth = document.getElementById('btnAIHealth');
+  const qWrap = document.getElementById('qWrap');
+  const genStatus = document.getElementById('genStatus');
+  const genMeta = document.getElementById('genMeta');
+  const submitStatus = document.getElementById('submitStatus');
+  const scoreBadge = document.getElementById('scoreBadge');
+  const scoreNow = document.getElementById('scoreNow');
+  const sessionIdEl = document.getElementById('sessionId');
+
+  // Reader controls
+  const passagePanel = document.getElementById('passagePanel');
+  const btnFS = document.getElementById('btnFS');
+  const btnFontPlus = document.getElementById('btnFontPlus');
+  const btnFontMinus = document.getElementById('btnFontMinus');
+  let fontPx = 16;
+  function setFont(px){ fontPx = Math.max(12, Math.min(28, px)); passageText.style.fontSize = fontPx + 'px'; }
+  setFont(fontPx);
+  function toggleFS(){ const on = passagePanel.classList.toggle('fs'); document.body.style.overflow = on ? 'hidden' : ''; btnFS.textContent = on ? 'Close' : 'Maximize'; if (on && fontPx < 18) setFont(18); passageText.focus(); }
+  btnFS.addEventListener('click', toggleFS);
+  btnFontPlus.addEventListener('click', ()=> setFont(fontPx + 2));
+  btnFontMinus.addEventListener('click', ()=> setFont(fontPx - 2));
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && passagePanel.classList.contains('fs')) toggleFS(); if (e.ctrlKey && e.key === 'Enter' && passagePanel.classList.contains('fs')) toggleFS(); });
+
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+  async function loadPassage(){
+    const pid = Number(pidEl.value || 0);
+    if (!pid){ alert('Enter a Passage ID to load.'); return; }
+    try{
+      btnLoad.disabled = true; genStatus.textContent = 'Loading passage…';
+      const res = await fetch(`/api/passages/${pid}`);
+      if(!res.ok){ throw new Error('Not found'); }
+      const j = await res.json();
+      passageText.value = j.text || '';
+      genStatus.textContent = `Loaded passage #${j.id || pid} — “${j.title || 'Untitled'}”`;
+    }catch(e){
+      console.error(e);
+      genStatus.textContent = 'Failed to load passage.';
+    }finally{
+      btnLoad.disabled = false;
+    }
+  }
+
+  function shuffle(arr){ const a = arr.slice(); for (let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function titleCase(s){ s = String(s||'').trim(); return s ? s.slice(0,1).toUpperCase() + s.slice(1).toLowerCase() : 'Higher-Order'; }
+
+  function renderQuestions(qs){
+    if (!qs || !qs.length){
+      qWrap.innerHTML = '<div class="muted">No questions yet.</div>';
+      btnSubmit.disabled = true; btnRegenerate.disabled = true; return;
+    }
+    const ABCD = ['A','B','C','D','E','F'];
+    const html = qs.map((q,idx)=>{
+      const name = `q_${idx}`;
+      const cog = titleCase(q.cognitive_process || 'Analysis');
+      const opts = q.options.map((opt,i)=>`
+        <div class="choice" data-opt="${i}">
+          <input type="radio" name="${name}" id="${name}_${i}" value="${i}">
+          <label for="${name}_${i}">
+            <span class="letter">${ABCD[i] || String(i+1)}.</span> ${esc(opt)}
+          </label>
+        </div>`).join('');
+      return `
+      <div class="q-item" data-id="${esc(q.id)}" data-idx="${idx}">
+        <div class="q-head">
+          <span class="q-id">Q${idx+1}.</span>
+          <span class="q-type">HOTS • ${esc(cog)}</span>
+        </div>
+        <div class="q-prompt">${esc(q.prompt || '')}</div>
+        ${opts}
+        <div class="explain muted"><b>Explanation:</b> <span class="rationale">${esc(q.rationale || 'Consider implicit causes, author intent, or logical consequences drawn from the text.')}</span></div>
+      </div>`;
+    }).join('');
+    qWrap.innerHTML = html;
+    btnSubmit.disabled = false; btnRegenerate.disabled = false;
+    scoreBadge.style.display = 'none'; scoreNow.textContent = '0'; submitStatus.textContent = '';
+  }
+
+  async function checkAI(){
+    try{
+      btnAIHealth.disabled = true;
+      genStatus.textContent = 'Checking Gemini…';
+      const r = await fetch('/api/gemini/health', {headers:{'X-Requested-With':'fetch'}});
+      const j = await r.json();
+      if (r.ok && j.ok) genStatus.textContent = `Gemini OK • ${j.model || ''} • ${j.latency_ms || '?'} ms`;
+      else genStatus.textContent = `Gemini issue: ${j.error || j.raw || 'unknown'}`;
+    }catch(e){ genStatus.textContent = 'Gemini check failed.'; }
+    finally{ btnAIHealth.disabled = false; }
+  }
+
+  async function generate(){
+    const text = (passageText.value || '').trim();
+    if (!text){ alert('Paste or load a passage first.'); return; }
+    try{
+      btnGen.disabled = true; btnRegenerate.disabled = true;
+      genStatus.textContent = 'Generating HOTS MCQs…';
+      const res = await fetch('/api/generate_questions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          text,
+          type: 'mcq_hots',
+          count: 10,
+          cognitive: ['analyze','infer','evaluate','interpret'],
+          constraints: { options: 4, avoid_trivia: true, stem_requires_reasoning: true }
+        })
+      });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Failed to generate');
+
+      const serverQs = (j.questions || []);
+      const shuffledQs = serverQs.map(q=>{
+        const pairs = q.options.map((o,i)=>({o,i}));
+        const sh = shuffle(pairs);
+        return { ...q, options: sh.map(p=>p.o), answer_index: sh.findIndex(p=>p.i===q.answer_index) };
+      });
+
+      window.currentQs = shuffledQs;
+      renderQuestions(shuffledQs);
+      genStatus.textContent = `Generated ${shuffledQs.length} question(s).`;
+      genMeta.style.display = (j.source || j.model) ? 'inline' : 'none';
+      genMeta.textContent = (j.source || j.model) ? `Generated by: ${j.source || 'AI'}${j.model ? ' ('+j.model+')' : ''}` : '';
+    }catch(e){
+      console.error(e);
+      genStatus.textContent = 'Generation failed.';
+    }finally{
+      btnGen.disabled = false; btnRegenerate.disabled = false;
+    }
+  }
+
+  function collectAnswers(){
+    const rows = [...qWrap.querySelectorAll('.q-item')];
+    return rows.map((row, i) => {
+      const picked = row.querySelector('input[type="radio"]:checked');
+      return { id: (window.currentQs?.[i]?.id)||i, idx: i, choice: picked ? Number(picked.value) : null };
+    });
+  }
+
+  // ANSWERED-ONLY local score (matches server logic)
+  function localScore(questions, answers){
+    let correct = 0, counted = 0;
+    for (const a of answers){
+      if (a.choice !== null){
+        counted++;
+        if (a.choice === questions[a.idx].answer_index) correct++;
+      }
+    }
+    const pct = counted ? (correct / counted * 100) : 0;
+    return { correct, total: counted, pct };
+  }
+
+  function revealAnswers(questions, answers){
+    answers.forEach(a=>{
+      const row = qWrap.querySelector(`.q-item[data-idx="${a.idx}"]`);
+      if (!row) return;
+      const choices = row.querySelectorAll('.choice');
+      choices.forEach((ch, i)=>{
+        ch.classList.remove('correct','wrong');
+        if (i === questions[a.idx].answer_index) ch.classList.add('correct');
+      });
+      if (a.choice !== null && a.choice !== questions[a.idx].answer_index){
+        const wrong = row.querySelector(`.choice[data-opt="${a.choice}"]`);
+        if (wrong) wrong.classList.add('wrong');
+      }
+      const exp = row.querySelector('.explain'); if (exp) exp.style.display = 'block';
+    });
+  }
+
+  async function submit(){
+    const questions = window.currentQs || [];
+    if (!questions.length){ alert('No questions to submit.'); return; }
+    const answers = collectAnswers();
+    const s = localScore(questions, answers);  // answered-only
+    scoreNow.textContent = s.pct.toFixed(0);
+    scoreBadge.style.display = 'inline-block';
+    revealAnswers(questions, answers);
+
+    submitStatus.textContent = 'Saving…';
+    try{
+      const payload = {
+        mode: 'mcq',
+        questions, answers,
+        session_id: Number(sessionIdEl.value || 0) || null
+      };
+      const res = await fetch('/api/submit_comprehension', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Save failed');
+
+      // Prefer server’s score (it’s authoritative)
+      const pct = typeof j.score_pct === 'number' ? j.score_pct : s.pct;
+      scoreNow.textContent = Math.round(pct).toString();
+      submitStatus.textContent =
+        `Saved. Score ${pct.toFixed(1)}% (${(j.correct ?? s.correct)}/${(j.total ?? s.total)}) ` +
+        `(attempt #${j.attempt_id || '—'}).`;
+    }catch(e){
+      console.error(e);
+      submitStatus.textContent = 'Save failed.';
+    }
+  }
+
+  function clearAll(){
+    window.currentQs = [];
+    qWrap.innerHTML = '<div class="muted">Cleared. Load/paste a passage and generate again.</div>';
+    scoreBadge.style.display = 'none'; scoreNow.textContent = '0'; submitStatus.textContent = '';
+    genStatus.textContent = ''; btnSubmit.disabled = true; btnRegenerate.disabled = true; genMeta.style.display = 'none';
+  }
+
+  btnLoad.addEventListener('click', loadPassage);
+  btnGen.addEventListener('click', generate);
+  btnRegenerate.addEventListener('click', generate);
+  btnClear.addEventListener('click', clearAll);
+  btnSubmit.addEventListener('click', submit);
+  btnAIHealth.addEventListener('click', checkAI);
+})();
+</script>
+{% endblock %}
