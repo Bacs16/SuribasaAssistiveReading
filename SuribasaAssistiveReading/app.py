@@ -1155,6 +1155,8 @@ def create_app():
 
 
 # ----------------- Entrypoint -----------------
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True)
+    # For local dev only
+    app.run(debug=True)  # or app.run(host="0.0.0.0", port=5000, debug=True)
